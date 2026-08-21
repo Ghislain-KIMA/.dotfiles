@@ -1,1 +1,28 @@
 Fichier à ne pas jamais commiter (secrets, cache, etc.)
+
+# --- Fichiers système / éditeurs ---
+*.swp
+*.bak
+*~
+.DS_Store
+
+# --- Secrets et configs sensibles (à ne jamais committer) ---
+*.conf
+!vscode/**/*.conf
+rclone.conf
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.token
+.env
+
+# --- Cache / état runtime (si jamais copié par erreur) ---
+__pycache__/
+*.pyc
+.vscode-shared/
+node_modules/
+
+# --- Fichiers temporaires de test pendant le développement du script ---
+/tmp/
+*.tmp
