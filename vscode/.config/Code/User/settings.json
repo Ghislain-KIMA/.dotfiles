@@ -1,0 +1,118 @@
+{
+    "editor.minimap.enabled": false,
+    "files.autoSave": "afterDelay",
+    "workbench.iconTheme": "vscode-icons",
+    "workbench.colorTheme": "Tomorrow Night",
+    "editor.stickyScroll.enabled": false,
+    "explorer.confirmDelete": false,
+    "terminal.integrated.inheritEnv": false,
+    "security.workspace.trust.untrustedFiles": "open",
+    "dbcode.connections": [
+        {
+            "connectionId": "BN794aGpXcZKodYqvIwYo",
+            "name": "yelemaso_dev_db",
+            "driver": "postgres",
+            "color": "#FFC54F",
+            "connectionType": "host",
+            "host": "localhost",
+            "port": 5432,
+            "ssl": false,
+            "authMethod": "password",
+            "username": "yelemaso_dev_user",
+            "password": "",
+            "savePassword": "secretStorage",
+            "database": "yelemaso_dev_db",
+            "readOnly": false,
+            "postConnectionSqlType": "inline",
+            "connectionTimeout": 30,
+            "idleTimeout": 300,
+            "maxConnections": 10,
+            "pinnedConnectionTimeout": "0",
+            "introspection": {
+                "progressive": false
+            }
+        },
+        {
+            "connectionId": "wzjGia12YI7M7woYi3rGv",
+            "name": "beobenere_dev_db",
+            "driver": "postgres",
+            "color": "#FFC54F",
+            "connectionType": "host",
+            "host": "localhost",
+            "port": 5432,
+            "ssl": false,
+            "authMethod": "password",
+            "username": "beobenere_dev_user",
+            "password": "",
+            "savePassword": "secretStorage",
+            "database": "beobenere_dev_db",
+            "readOnly": false,
+            "postConnectionSqlType": "inline",
+            "connectionTimeout": 30,
+            "idleTimeout": 300,
+            "maxConnections": 10,
+            "pinnedConnectionTimeout": "0",
+            "introspection": {
+                "progressive": false
+            }
+        },
+        {
+            "connectionId": "Ku3hTfgQ_76sd2dFbMgdl",
+            "name": "django_w3school_dev_db",
+            "driver": "postgres",
+            "color": "#FFC54F",
+            "connectionType": "host",
+            "host": "localhost",
+            "port": 5432,
+            "ssl": false,
+            "authMethod": "password",
+            "username": "django_w3school_dev_user",
+            "password": "",
+            "savePassword": "secretStorage",
+            "database": "django_w3school_dev_db",
+            "readOnly": false,
+            "postConnectionSqlType": "inline",
+            "connectionTimeout": 30,
+            "idleTimeout": 300,
+            "maxConnections": 10,
+            "pinnedConnectionTimeout": "0",
+            "introspection": {
+                "progressive": false
+            }
+        }
+    ],
+    "workbench.colorCustomizations": {},
+    "vsicons.dontShowNewVersionMessage": true,
+    "explorer.confirmDragAndDrop": false,
+    "workbench.settings.applyToAllProfiles": [
+        "todo-tree.ripgrep.ripgrep",
+        "python.terminal.useEnvFile",
+        "workbench.panel.defaultLocation",
+        "python.analysis.typeCheckingMode"
+    ],
+    "todo-tree.ripgrep.ripgrep": "/usr/bin/rg",
+    "hediet.vscode-drawio.resizeImages": null,
+    "claudeCode.preferredLocation": "panel",
+    "hediet.vscode-drawio.theme": "min",
+    "hediet.vscode-drawio.appearance": "automatic",
+    "window.autoDetectColorScheme": true,
+    "[dart]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "editor.rulers": [
+            80
+        ],
+        "editor.selectionHighlight": false,
+        "editor.tabCompletion": "onlySnippets",
+        "editor.wordBasedSuggestions": "off"
+    },
+    "python.terminal.useEnvFile": true,
+    "dbcode.resultLocation": "panel",
+    "workbench.activityBar.location": "top",
+    "editor.linkedEditing": true,
+    "python.analysis.typeCheckingMode": "standard",
+    "[markdown]": {
+        "diffEditor.ignoreTrimWhitespace": false
+    },
+    "window.menuBarVisibility": "compact"
+}

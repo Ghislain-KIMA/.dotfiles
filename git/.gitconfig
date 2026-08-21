@@ -1,0 +1,14 @@
+[user]
+	name = Ghislain KIMA
+	email = ghiskima@gmail.com
+[alias]
+	s = status
+	a = add
+	cm = commit -m
+	c = checkout
+	b = branch
+	l = log
+[core]
+	editor = code --wait
+[init]
+	defaultBranch = main
