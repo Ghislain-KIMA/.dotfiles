@@ -45,7 +45,7 @@ def main():
     dotfiles_dir = Path(__file__).resolve().parent
 
     install_stow()
-    stow_packages(dotfiles_dir, ["git", "vscode"])
+    stow_packages(dotfiles_dir, ["git", "vscode", "nano", "conda"])
     restore_vscode_extensions(dotfiles_dir)
 
     print("\n==================================================")
