@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-import json
 import os
-import shutil
 import subprocess
-import urllib.request
 from pathlib import Path
 
 
@@ -27,9 +24,6 @@ def main():
     apps_dir = home / ".local" / "share" / "applications"
     apps_dir.mkdir(parents=True, exist_ok=True)
 
-    bin_dir = home / ".local" / "bin"
-    bin_dir.mkdir(parents=True, exist_ok=True)
-
     print(f"=== Dossier d'installation ciblé : {install_dir} ===")
 
     # -------------------------------------------------------------
@@ -37,9 +31,16 @@ def main():
     # -------------------------------------------------------------
     print("\n=== 1. Installation des paquets système via APT ===")
     run(["sudo", "apt", "update"])
+
+    # Pré-accepte la licence VirtualBox Extension Pack (évite un prompt bloquant)
+    run(
+        "echo 'virtualbox-ext-pack virtualbox-ext-pack/license note' | sudo debconf-set-selections",
+        shell=True,
+    )
     run(
         [
             "sudo",
+            "-E",
             "apt",
             "install",
             "-y",
@@ -60,7 +61,8 @@ def main():
             "unzip",
             "tar",
             "xz-utils",
-        ]
+        ],
+        env={**os.environ, "DEBIAN_FRONTEND": "noninteractive"},
     )
 
     # Navigateurs système (.deb obligatoire pour sandbox/sécurité)
@@ -101,6 +103,45 @@ def main():
     run(["sudo", "apt", "update"])
     run(["sudo", "apt", "install", "-y", "microsoft-edge-stable"])
 
+    # Docker (dépôt officiel + clé GPG)
+    print("\n=== Installation de Docker ===")
+    run(
+        "for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; "
+        "do sudo apt remove -y $pkg 2>/dev/null || true; done",
+        shell=True,
+    )
+    run(["sudo", "install", "-m", "0755", "-d", "/etc/apt/keyrings"])
+    run(
+        "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | "
+        "sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
+        shell=True,
+    )
+    run(["sudo", "chmod", "a+r", "/etc/apt/keyrings/docker.gpg"])
+    run(
+        'echo "deb [arch=$(dpkg --print-architecture) '
+        "signed-by=/etc/apt/keyrings/docker.gpg] "
+        "https://download.docker.com/linux/ubuntu "
+        '$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | '
+        "sudo tee /etc/apt/sources.list.d/docker.list > /dev/null",
+        shell=True,
+    )
+    run(["sudo", "apt", "update"])
+    run(
+        [
+            "sudo",
+            "apt",
+            "install",
+            "-y",
+            "docker-ce",
+            "docker-ce-cli",
+            "containerd.io",
+            "docker-buildx-plugin",
+            "docker-compose-plugin",
+        ]
+    )
+    # Permet d'utiliser `docker` sans sudo (effectif après reconnexion/redémarrage)
+    run(["sudo", "usermod", "-aG", "docker", os.environ.get("USER", "")])
+
     # -------------------------------------------------------------
     # 2. Logiciels installés dans ~/installed/
     # -------------------------------------------------------------
@@ -131,29 +172,9 @@ Type=Application
 Categories=Development;IDE;
 """)
 
-    # --- Android Studio (Archive tar.gz) ---
-    print("--> Installation d'Android Studio...")
-    android_studio_dir = install_dir / "android-studio"
-    if not android_studio_dir.exists():
-        # Téléchargement de la dernière version stable
-        run(
-            [
-                "wget",
-                "https://redirector.gvt1.com/edgedl/android/studio/ide-zips/2023.3.1.18/android-studio-2023.3.1.18-linux.tar.gz",
-                "-O",
-                "/tmp/android-studio.tar.gz",
-            ]
-        )
-        run(["tar", "-xzf", "/tmp/android-studio.tar.gz", "-C", str(install_dir)])
-        os.remove("/tmp/android-studio.tar.gz")
-
-        (apps_dir / "android-studio.desktop").write_text(f"""[Desktop Entry]
-Name=Android Studio
-Exec={android_studio_dir}/bin/studio.sh
-Icon={android_studio_dir}/bin/studio.png
-Type=Application
-Categories=Development;IDE;
-""")
+    # --- Android Studio (via Snap, toujours à jour automatiquement) ---
+    print("--> Installation d'Android Studio (Snap)...")
+    run(["sudo", "snap", "install", "android-studio", "--classic"], check=False)
 
     # --- Flutter SDK ---
     print("--> Installation du SDK Flutter...")
@@ -207,7 +228,6 @@ Categories=Development;IDE;
 # --- Configurations de vos outils dans ~/installed ---
 export PATH="$HOME/installed/vscode/bin:$PATH"
 export PATH="$HOME/installed/flutter/bin:$PATH"
-export PATH="$HOME/installed/android-studio/bin:$PATH"
 export NVM_DIR="$HOME/installed/nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
 """
