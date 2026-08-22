@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import os
 import subprocess
 from pathlib import Path
@@ -142,39 +143,125 @@ def main():
     # Permet d'utiliser `docker` sans sudo (effectif après reconnexion/redémarrage)
     run(["sudo", "usermod", "-aG", "docker", os.environ.get("USER", "")])
 
+    # Claude Desktop (dépôt APT officiel Anthropic + clé GPG)
+    print("\n=== Installation de Claude Desktop ===")
+    run(
+        [
+            "sudo",
+            "curl",
+            "-fsSLo",
+            "/usr/share/keyrings/claude-desktop-archive-keyring.asc",
+            "https://downloads.claude.ai/claude-desktop/key.asc",
+        ]
+    )
+    # Vérification de l'empreinte de la clé (fingerprint officiel documenté par Anthropic)
+    fingerprint_check = subprocess.run(
+        ["gpg", "--show-keys", "/usr/share/keyrings/claude-desktop-archive-keyring.asc"],
+        capture_output=True,
+        text=True,
+    )
+    expected_fingerprint = "31DDDE24DDFAB679F42D7BD2BAA929FF1A7ECACE"
+    if expected_fingerprint not in fingerprint_check.stdout.replace(" ", ""):
+        raise RuntimeError(
+            f"Empreinte GPG invalide pour Claude Desktop !\n"
+            f"Attendue : {expected_fingerprint}\n"
+            f"Obtenue  : {fingerprint_check.stdout}\n"
+            f"Installation annulée par sécurité."
+        )
+    print("--> Empreinte GPG vérifiée avec succès.")
+
+    run(
+        "echo 'deb [signed-by=/usr/share/keyrings/claude-desktop-archive-keyring.asc] "
+        "https://downloads.claude.ai/claude-desktop/apt/stable stable main' | "
+        "sudo tee /etc/apt/sources.list.d/claude-desktop.list > /dev/null",
+        shell=True,
+    )
+    run(["sudo", "apt", "update"])
+    run(["sudo", "apt", "install", "-y", "claude-desktop"])
+
     # -------------------------------------------------------------
     # 2. Logiciels installés dans ~/installed/
     # -------------------------------------------------------------
     print("\n=== 2. Installation des logiciels dans ~/installed/ ===")
 
-    # --- VS Code (Archive tar.gz) ---
-    print("--> Installation de VS Code...")
-    vscode_dir = install_dir / "vscode"
-    if not vscode_dir.exists():
-        run(
-            [
-                "wget",
-                "https://code.visualstudio.com/sha/download?build=stable&os=linux-x64",
-                "-O",
-                "/tmp/vscode.tar.gz",
-            ]
-        )
-        vscode_dir.mkdir(parents=True, exist_ok=True)
-        run(["tar", "-xzf", "/tmp/vscode.tar.gz", "-C", str(vscode_dir), "--strip-components=1"])
-        os.remove("/tmp/vscode.tar.gz")
+    # --- VS Code (dépôt APT officiel Microsoft, signé par clé GPG) ---
+    print("--> Installation de VS Code (dépôt APT officiel)...")
+    run(
+        "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | "
+        "gpg --dearmor > /tmp/vscode.gpg",
+        shell=True,
+    )
+    run(
+        [
+            "sudo",
+            "install",
+            "-D",
+            "-o",
+            "root",
+            "-g",
+            "root",
+            "-m",
+            "644",
+            "/tmp/vscode.gpg",
+            "/etc/apt/keyrings/packages.microsoft.gpg",
+        ]
+    )
+    os.remove("/tmp/vscode.gpg")
+    run(
+        "echo 'deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] "
+        "https://packages.microsoft.com/repos/code stable main' | "
+        "sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null",
+        shell=True,
+    )
+    run(["sudo", "apt", "update"])
+    run(["sudo", "apt", "install", "-y", "code"])
 
-        # Raccourci .desktop
-        (apps_dir / "code.desktop").write_text(f"""[Desktop Entry]
-Name=Visual Studio Code
-Exec={vscode_dir}/bin/code %F
-Icon={vscode_dir}/resources/app/resources/linux/code.png
+    # --- Android Studio (archive officielle .tar.gz + vérification SHA-256) ---
+    # Version et somme à mettre à jour manuellement depuis https://developer.android.com/studio
+    print("--> Installation d'Android Studio...")
+    ANDROID_STUDIO_VERSION = "2026.1.3.8"
+    ANDROID_STUDIO_FILENAME = "android-studio-quail3-patch1-linux.tar.gz"
+    ANDROID_STUDIO_SHA256 = (
+        "5bd5ee5d6e747b13f82fba3241380bd358cc2f4a847815c8e860757df13dc35f"
+    )
+    ANDROID_STUDIO_URL = (
+        f"https://edgedl.me.gvt1.com/android/studio/ide-zips/"
+        f"{ANDROID_STUDIO_VERSION}/{ANDROID_STUDIO_FILENAME}"
+    )
+
+    android_studio_dir = install_dir / "android-studio"
+    if not android_studio_dir.exists():
+        archive_path = Path("/tmp") / ANDROID_STUDIO_FILENAME
+        run(["wget", ANDROID_STUDIO_URL, "-O", str(archive_path)])
+
+        # Vérification de l'intégrité (SHA-256)
+        print("--> Vérification du SHA-256...")
+        sha256 = hashlib.sha256()
+        with open(archive_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256.update(chunk)
+        computed = sha256.hexdigest()
+
+        if computed != ANDROID_STUDIO_SHA256:
+            archive_path.unlink()
+            raise RuntimeError(
+                f"SHA-256 invalide pour Android Studio !\n"
+                f"Attendu : {ANDROID_STUDIO_SHA256}\n"
+                f"Obtenu  : {computed}\n"
+                f"Le fichier téléchargé a été supprimé par sécurité."
+            )
+        print("--> SHA-256 vérifié avec succès.")
+
+        run(["tar", "-xzf", str(archive_path), "-C", str(install_dir)])
+        archive_path.unlink()
+
+        (apps_dir / "android-studio.desktop").write_text(f"""[Desktop Entry]
+Name=Android Studio
+Exec={android_studio_dir}/bin/studio.sh
+Icon={android_studio_dir}/bin/studio.png
 Type=Application
 Categories=Development;IDE;
 """)
-
-    # --- Android Studio (via Snap, toujours à jour automatiquement) ---
-    print("--> Installation d'Android Studio (Snap)...")
-    run(["sudo", "snap", "install", "android-studio", "--classic"], check=False)
 
     # --- Flutter SDK ---
     print("--> Installation du SDK Flutter...")
@@ -191,20 +278,40 @@ Categories=Development;IDE;
             ]
         )
 
-    # --- Miniconda ---
+    # --- Miniconda (version épinglée + vérification SHA-256) ---
+    # Version et somme à mettre à jour manuellement depuis https://repo.anaconda.com/miniconda/
     print("--> Installation de Miniconda...")
+    MINICONDA_FILENAME = "Miniconda3-py314_26.5.3-2-Linux-x86_64.sh"
+    MINICONDA_SHA256 = (
+        "80bc27f13c4de90f10e387aa45e864de4f0860692c1221aef5900009a2b55302"
+    )
+    MINICONDA_URL = f"https://repo.anaconda.com/miniconda/{MINICONDA_FILENAME}"
+
     conda_dir = install_dir / "miniconda3"
     if not conda_dir.exists():
-        run(
-            [
-                "wget",
-                "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh",
-                "-O",
-                "/tmp/miniconda.sh",
-            ]
-        )
-        run(["bash", "/tmp/miniconda.sh", "-b", "-u", "-p", str(conda_dir)])
-        os.remove("/tmp/miniconda.sh")
+        installer_path = Path("/tmp") / MINICONDA_FILENAME
+        run(["wget", MINICONDA_URL, "-O", str(installer_path)])
+
+        # Vérification de l'intégrité (SHA-256)
+        print("--> Vérification du SHA-256...")
+        sha256 = hashlib.sha256()
+        with open(installer_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha256.update(chunk)
+        computed = sha256.hexdigest()
+
+        if computed != MINICONDA_SHA256:
+            installer_path.unlink()
+            raise RuntimeError(
+                f"SHA-256 invalide pour Miniconda !\n"
+                f"Attendu : {MINICONDA_SHA256}\n"
+                f"Obtenu  : {computed}\n"
+                f"Le fichier téléchargé a été supprimé par sécurité."
+            )
+        print("--> SHA-256 vérifié avec succès.")
+
+        run(["bash", str(installer_path), "-b", "-u", "-p", str(conda_dir)])
+        installer_path.unlink()
         run([str(conda_dir / "bin" / "conda"), "init", "bash"])
 
     # --- Node.js via NVM ---
@@ -226,8 +333,8 @@ Categories=Development;IDE;
 
     path_additions = f"""
 # --- Configurations de vos outils dans ~/installed ---
-export PATH="$HOME/installed/vscode/bin:$PATH"
 export PATH="$HOME/installed/flutter/bin:$PATH"
+export PATH="$HOME/installed/android-studio/bin:$PATH"
 export NVM_DIR="$HOME/installed/nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
 """
@@ -250,6 +357,7 @@ export NVM_DIR="$HOME/installed/nvm"
         "gdrive": ("Google Drive", "https://drive.google.com"),
         "youtube": ("YouTube", "https://youtube.com"),
         "gmail": ("Gmail", "https://mail.google.com"),
+        "claude": ("Claude", "https://claude.ai"),
     }
 
     for app_id, (name, url) in web_apps.items():
