@@ -17,9 +17,20 @@ def run(cmd, shell=False, check=True, env=None):
     subprocess.run(cmd, shell=shell, check=check, env=env)
 
 
+def compute_sha256(file_path):
+    """Calcule le SHA-256 d'un fichier par blocs, sans le charger entièrement en mémoire."""
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(8192):
+            sha256.update(chunk)
+    return sha256.hexdigest()
+
+
 def main():
     home = Path.home()
-    install_dir = home / "installed"
+    # Personnalisable via la variable d'environnement INSTALL_DIR
+    # (ex: INSTALL_DIR=~/.local python3 my_ubuntu.py)
+    install_dir = Path(os.environ.get("INSTALL_DIR", str(home / "installed"))).expanduser()
     install_dir.mkdir(parents=True, exist_ok=True)
 
     apps_dir = home / ".local" / "share" / "applications"
@@ -180,9 +191,9 @@ def main():
     run(["sudo", "apt", "install", "-y", "claude-desktop"])
 
     # -------------------------------------------------------------
-    # 2. Logiciels installés dans ~/installed/
+    # 2. Logiciels installés dans install_dir (voir INSTALL_DIR)
     # -------------------------------------------------------------
-    print("\n=== 2. Installation des logiciels dans ~/installed/ ===")
+    print(f"\n=== 2. Installation des logiciels dans {install_dir}/ ===")
 
     # --- VS Code (dépôt APT officiel Microsoft, signé par clé GPG) ---
     print("--> Installation de VS Code (dépôt APT officiel)...")
@@ -236,11 +247,7 @@ def main():
 
         # Vérification de l'intégrité (SHA-256)
         print("--> Vérification du SHA-256...")
-        sha256 = hashlib.sha256()
-        with open(archive_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha256.update(chunk)
-        computed = sha256.hexdigest()
+        computed = compute_sha256(archive_path)
 
         if computed != ANDROID_STUDIO_SHA256:
             archive_path.unlink()
@@ -294,11 +301,7 @@ Categories=Development;IDE;
 
         # Vérification de l'intégrité (SHA-256)
         print("--> Vérification du SHA-256...")
-        sha256 = hashlib.sha256()
-        with open(installer_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha256.update(chunk)
-        computed = sha256.hexdigest()
+        computed = compute_sha256(installer_path)
 
         if computed != MINICONDA_SHA256:
             installer_path.unlink()
@@ -331,15 +334,16 @@ Categories=Development;IDE;
     bashrc = home / ".bashrc"
     bashrc_content = bashrc.read_text() if bashrc.exists() else ""
 
+    marker = f"# --- Configurations de vos outils dans {install_dir} ---"
     path_additions = f"""
-# --- Configurations de vos outils dans ~/installed ---
-export PATH="$HOME/installed/flutter/bin:$PATH"
-export PATH="$HOME/installed/android-studio/bin:$PATH"
-export NVM_DIR="$HOME/installed/nvm"
+{marker}
+export PATH="{install_dir}/flutter/bin:$PATH"
+export PATH="{install_dir}/android-studio/bin:$PATH"
+export NVM_DIR="{install_dir}/nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \\. "$NVM_DIR/nvm.sh"
 """
 
-    if "# --- Configurations de vos outils dans ~/installed ---" not in bashrc_content:
+    if marker not in bashrc_content:
         with open(bashrc, "a") as f:
             f.write(path_additions)
 
@@ -375,7 +379,7 @@ Categories=Network;
     setup_dotfiles()
 
     print("\n==================================================")
-    print(" Tout est installé dans ~/installed/ et configuré !")
+    print(f" Tout est installé dans {install_dir}/ et configuré !")
     print(" Redémarrez le terminal pour appliquer le PATH.")
     print("==================================================")
 

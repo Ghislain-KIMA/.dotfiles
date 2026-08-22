@@ -24,16 +24,26 @@ Dépôt personnel regroupant l'installation automatisée de logiciels et la rest
 Une seule commande, à lancer sur un Ubuntu tout juste installé (sans rien d'autre configuré au préalable) :
 
 ```bash
-curl -O https://raw.githubusercontent.com/TON_USER/.dotfiles/main/my_ubuntu.py
+curl -O https://github.com/Ghislain-KIMA/.dotfiles/blob/main/my_ubuntu.py
 python3 my_ubuntu.py
+```
+
+### Personnaliser le dossier d'installation
+
+Par défaut, les logiciels sans paquet APT (VS Code excepté, voir tableau ci-dessous) s'installent dans `~/installed/`. Ce chemin est personnalisable via la variable d'environnement `INSTALL_DIR`, sans avoir à modifier le script :
+
+```bash
+INSTALL_DIR=~/.local python3 my_ubuntu.py
+# ou n'importe quel autre chemin
+INSTALL_DIR=/opt/mytools python3 my_ubuntu.py
 ```
 
 Ce script va, dans l'ordre :
 
-1. Installer les paquets système essentiels via APT (Git, PostgreSQL, VirtualBox, Docker, etc.)
-2. Installer Chrome, Edge, VS Code, Android Studio, Flutter, Miniconda, Node.js (via NVM)
+1. Installer les paquets système essentiels via APT (Git, PostgreSQL, VirtualBox, Docker, Claude Desktop, etc.)
+2. Installer VS Code, Android Studio, Flutter, Miniconda, Node.js (via NVM)
 3. Configurer le `PATH` dans `~/.bashrc`
-4. Créer les raccourcis Web Apps Chrome (Gmail, GitHub, YouTube, etc.)
+4. Créer les raccourcis Web Apps Chrome (Gmail, GitHub, YouTube, Claude, etc.)
 5. Cloner ce dépôt dans `~/.dotfiles/` et restaurer les configurations :
    - Installer [GNU Stow](https://www.gnu.org/software/stow/)
    - Créer les liens symboliques (`~/.gitconfig`, `~/.nanorc`, `~/.condarc`, `~/.config/Code/User/settings.json`, ...)
@@ -43,18 +53,18 @@ Ce script va, dans l'ordre :
 
 Chaque logiciel est installé via la source officielle la plus fiable disponible, en privilégiant systématiquement APT/`.deb` (paquets signés et vérifiés automatiquement à chaque mise à jour) ; à défaut, une archive officielle avec vérification manuelle du SHA-256.
 
-| Logiciel | Méthode | Emplacement |
-|---|---|---|
-| Paquets système (build-essential, git, PostgreSQL, VirtualBox, Inkscape...) | APT (dépôts Ubuntu) | système |
-| Google Chrome | `.deb` officiel | système |
-| Microsoft Edge | dépôt APT Microsoft + clé GPG | système |
-| Docker (CE, CLI, Buildx, Compose) | dépôt APT officiel + clé GPG | système |
-| Claude Desktop | dépôt APT officiel Anthropic + **empreinte GPG vérifiée** | système |
-| VS Code | dépôt APT Microsoft + clé GPG | système |
-| Android Studio | archive `.tar.gz` officielle + **SHA-256 vérifié** | `~/installed/android-studio/` |
-| Flutter SDK | `git clone` (dépôt officiel) | `~/installed/flutter/` |
-| Miniconda | installeur `.sh` officiel + **SHA-256 vérifié** | `~/installed/miniconda3/` |
-| Node.js / NVM | script d'installation officiel | `~/installed/nvm/` |
+| Logiciel                                                                     | Méthode                                                           | Emplacement                      |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
+| Paquets système (build-essential, git, PostgreSQL, VirtualBox, Inkscape...) | APT (dépôts Ubuntu)                                              | système                         |
+| Google Chrome                                                                | `.deb` officiel                                                  | système                         |
+| Microsoft Edge                                                               | dépôt APT Microsoft + clé GPG                                   | système                         |
+| Docker (CE, CLI, Buildx, Compose)                                            | dépôt APT officiel + clé GPG                                    | système                         |
+| Claude Desktop                                                               | dépôt APT officiel Anthropic +**empreinte GPG vérifiée** | système                         |
+| VS Code                                                                      | dépôt APT Microsoft + clé GPG                                   | système                         |
+| Android Studio                                                               | archive`.tar.gz` officielle + **SHA-256 vérifié**        | `$INSTALL_DIR/android-studio/` |
+| Flutter SDK                                                                  | `git clone` (dépôt officiel)                                   | `$INSTALL_DIR/flutter/`        |
+| Miniconda                                                                    | installeur`.sh` officiel + **SHA-256 vérifié**           | `$INSTALL_DIR/miniconda3/`     |
+| Node.js / NVM                                                                | script d'installation officiel                                     | `$INSTALL_DIR/nvm/`            |
 
 ### Vérification SHA-256 (Android Studio, Miniconda)
 
@@ -95,4 +105,4 @@ git push
 
 ## Auteur
 
-Ghislain — [BeoBenere](https://github.com/TON_USER)
+Ghislain KIMA — [Ghislain-KIMA](https://github.com/Ghislain-KIMA/Ghislain-KIMA.git)
