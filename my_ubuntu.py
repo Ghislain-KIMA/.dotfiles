@@ -133,6 +133,38 @@ def install_deb_packages(packages):
                 os.remove(deb_path)
 
 
+# Paquets "simples" : déjà présents dans les dépôts Ubuntu par défaut,
+# installables directement via apt, sans clé GPG ni dépôt supplémentaire.
+# "binary" est utilisé pour vérifier si déjà installé ; "package" est le
+# nom exact du paquet apt (parfois différent, ex: fd-find -> binaire fdfind).
+APT_PACKAGES = [
+    {"name": "ripgrep", "binary": "rg", "package": "ripgrep"},
+]
+
+
+def install_apt_packages(packages):
+    """Installe en une fois tous les paquets APT simples pas encore présents."""
+    print("\n=== Installation des outils en ligne de commande ===\n")
+
+    to_install = []
+    for pkg in packages:
+        if shutil.which(pkg["binary"]):
+            print(f"===> {pkg['name']} est déjà installé.")
+        else:
+            to_install.append(pkg["package"])
+
+    if not to_install:
+        return
+
+    try:
+        apt_update()
+        subprocess.run(["sudo", "apt", "install", "-y", *to_install], check=True)
+        print(f"\n==> Installés avec succès : {', '.join(to_install)}")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation : {error}")
+        sys.exit(1)
+
+
 def install_vscode():
     """Installe VS Code via le dépôt APT officiel Microsoft (pas de .deb brut).
 
@@ -320,6 +352,7 @@ STEPS = {
     "chrome": lambda: install_deb_packages(DEB_PACKAGES),
     "vscode": install_vscode,
     "edge": install_edge,
+    "tools": lambda: install_apt_packages(APT_PACKAGES),
     "extensions": install_vscode_extensions,
     "claude": install_claude_desktop,
 }
