@@ -181,6 +181,53 @@ def install_vscode():
         sys.exit(1)
 
 
+def install_edge():
+    """Installe Microsoft Edge via le dépôt APT officiel (même clé GPG que VS Code).
+
+    Le lien de téléchargement direct .deb d'Edge n'est pas vraiment stable
+    (le nom exact du fichier change à chaque nouvelle version) -> on privilégie
+    le dépôt APT, qui reste à la même URL indéfiniment et se met à jour tout
+    seul via system_update() une fois installé.
+    """
+    print("\n=== Installation de Microsoft Edge ===\n")
+
+    if shutil.which("microsoft-edge"):
+        upgrade_package_if_needed("microsoft-edge-stable")
+        return
+
+    try:
+        subprocess.run(
+            "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | "
+            "gpg --dearmor > /tmp/microsoft.gpg",
+            shell=True,
+            check=True,
+        )
+        subprocess.run(
+            [
+                "sudo", "install", "-D", "-o", "root", "-g", "root", "-m", "644",
+                "/tmp/microsoft.gpg", "/etc/apt/keyrings/packages.microsoft.gpg",
+            ],
+            check=True,
+        )
+        os.remove("/tmp/microsoft.gpg")
+
+        subprocess.run(
+            "echo 'deb [arch=amd64 "
+            "signed-by=/etc/apt/keyrings/packages.microsoft.gpg] "
+            "https://packages.microsoft.com/repos/edge stable main' | "
+            "sudo tee /etc/apt/sources.list.d/microsoft-edge.list > /dev/null",
+            shell=True,
+            check=True,
+        )
+
+        apt_update()
+        subprocess.run(["sudo", "apt", "install", "-y", "microsoft-edge-stable"], check=True)
+        print("\n==> Microsoft Edge installé avec succès !")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation d'Edge : {error}")
+        sys.exit(1)
+
+
 def install_vscode_extensions():
     """Réinstalle les extensions VS Code listées dans ~/.dotfiles/vscode/extensions.txt.
 
@@ -272,6 +319,7 @@ STEPS = {
     "update": system_update,
     "chrome": lambda: install_deb_packages(DEB_PACKAGES),
     "vscode": install_vscode,
+    "edge": install_edge,
     "extensions": install_vscode_extensions,
     "claude": install_claude_desktop,
 }
