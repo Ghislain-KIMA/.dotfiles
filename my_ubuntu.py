@@ -455,6 +455,93 @@ def install_virtualbox():
         sys.exit(1)
 
 
+def install_nodejs():
+    """Installe Node.js via NVM (Node Version Manager), sans sudo.
+
+    Pas de dépôt APT ici volontairement : NVM permet de changer de version
+    de Node facilement, ne nécessite aucun privilège root (tout s'installe
+    dans ~/.nvm), et c'est la méthode officiellement recommandée par le
+    projet nvm-sh lui-même.
+    """
+    print("\n=== Installation de Node.js (via NVM) ===\n")
+
+    NVM_VERSION = "v0.40.7"
+    NODE_VERSION = "24"
+    nvm_dir = Path.home() / ".nvm"
+
+    if not (nvm_dir / "nvm.sh").exists():
+        try:
+            subprocess.run(
+                f"wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/{NVM_VERSION}/install.sh | bash",
+                shell=True,
+                check=True,
+            )
+            print("\n==> NVM installé avec succès !")
+        except subprocess.CalledProcessError as error:
+            print(f"\n[X] Une erreur est survenue lors de l'installation de NVM : {error}")
+            sys.exit(1)
+    else:
+        print("===> NVM est déjà installé.")
+
+    # nvm est une fonction shell (chargée via nvm.sh), pas un exécutable :
+    # on doit la charger et l'appeler dans le même processus bash.
+    try:
+        subprocess.run(
+            f'export NVM_DIR="{nvm_dir}"; . "$NVM_DIR/nvm.sh"; '
+            f"nvm install {NODE_VERSION} && node -v && npm -v",
+            shell=True,
+            check=True,
+        )
+        print(f"\n==> Node.js {NODE_VERSION} installé avec succès via NVM !")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation de Node.js : {error}")
+        sys.exit(1)
+
+
+def install_miniconda():
+    """Installe Miniconda : version épinglée + SHA-256 vérifié (pas de dépôt APT officiel).
+
+    Version et somme à mettre à jour manuellement depuis https://repo.anaconda.com/miniconda/
+    """
+    print("\n=== Installation de Miniconda ===\n")
+
+    if shutil.which("conda"):
+        print("===> Miniconda est déjà installé (mise à jour manuelle : `conda update conda`).")
+        return
+
+    MINICONDA_FILENAME = "Miniconda3-py314_26.5.3-2-Linux-x86_64.sh"
+    MINICONDA_SHA256 = "80bc27f13c4de90f10e387aa45e864de4f0860692c1221aef5900009a2b55302"
+    MINICONDA_URL = f"https://repo.anaconda.com/miniconda/{MINICONDA_FILENAME}"
+    conda_dir = Path.home() / "miniconda3"
+
+    try:
+        installer_path = Path("/tmp") / MINICONDA_FILENAME
+        subprocess.run(["wget", MINICONDA_URL, "-O", str(installer_path)], check=True)
+
+        print("==> Vérification du SHA-256...")
+        computed = compute_sha256(installer_path)
+        if computed != MINICONDA_SHA256:
+            installer_path.unlink()
+            print(
+                f"\n[X] SHA-256 invalide pour Miniconda !\n"
+                f"Attendu : {MINICONDA_SHA256}\n"
+                f"Obtenu  : {computed}\n"
+                f"Fichier supprimé par sécurité."
+            )
+            sys.exit(1)
+        print("===> SHA-256 vérifié avec succès.")
+
+        subprocess.run(
+            ["bash", str(installer_path), "-b", "-u", "-p", str(conda_dir)], check=True
+        )
+        installer_path.unlink()
+        subprocess.run([str(conda_dir / "bin" / "conda"), "init", "bash"], check=True)
+        print("\n==> Miniconda installé avec succès ! (redémarre ton terminal)")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation de Miniconda : {error}")
+        sys.exit(1)
+
+
 def install_vscode_extensions():
     """Réinstalle les extensions VS Code listées dans ~/.dotfiles/vscode/extensions.txt.
 
@@ -549,6 +636,8 @@ STEPS = {
     "edge": install_edge,
     "docker": install_docker,
     "virtualbox": install_virtualbox,
+    "nodejs": install_nodejs,
+    "miniconda": install_miniconda,
     "tools": lambda: install_apt_packages(APT_PACKAGES),
     "drawio": install_drawio,
     "extensions": install_vscode_extensions,
