@@ -214,8 +214,11 @@ def install_drawio():
         latest_version = release_data["tag_name"].lstrip("v")
 
         if shutil.which("drawio"):
+            # Le paquet dpkg s'appelle "draw.io" (avec un point), pas "drawio"
+            # -> confirmé par le message d'apt lors de l'installation
+            # ("sélection de « draw.io » au lieu de ...").
             result = subprocess.run(
-                ["dpkg-query", "-W", "-f=${Version}", "drawio"],
+                ["dpkg-query", "-W", "-f=${Version}", "draw.io"],
                 capture_output=True,
                 text=True,
             )
