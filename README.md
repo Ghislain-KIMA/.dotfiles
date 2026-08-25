@@ -1,93 +1,98 @@
 # .dotfiles
 
-Dépôt personnel regroupant l'installation automatisée de logiciels et la restauration de mes configurations habituelles (Git, VS Code, nano, conda...) sur Ubuntu, après une réinstallation du système.
+Dépôt personnel pour automatiser l'installation des logiciels après une
+réinstallation d'Ubuntu, et conserver quelques configurations perso.
 
-## Contenu
+## Structure du dépôt
 
 ```
 .dotfiles/
-├── my_ubuntu.py          # Installe les logiciels (APT, .deb, archives vérifiées, dépôts officiels...)
-├── restore_dotfiles.py   # Installe Stow, relie les configs, réinstalle les extensions VS Code
-├── git/
-│   └── .gitconfig
-├── nano/
-│   └── .nanorc
-├── conda/
-│   └── .condarc
-└── vscode/
-    ├── .config/Code/User/settings.json
-    └── extensions.txt    # Liste des extensions VS Code à réinstaller
+├── my_ubuntu.py              # Point d'entrée : bootstrap (git + clone) + CLI
+└── installer/
+    ├── __init__.py
+    ├── core.py                # apt_update, upgrade_package_if_needed, compute_sha256, system_update
+    ├── browsers.py             # Chrome, Edge
+    ├── dev_tools.py            # VS Code, Docker, VirtualBox, Node.js (NVM), Miniconda
+    ├── misc.py                 # ripgrep, Inkscape, PostgreSQL, rclone, Draw.io, Claude Desktop
+    ├── vscode_extensions.py    # Réinstallation des extensions VS Code
+    └── steps.py                # Rassemble tout dans STEPS + run_all()
 ```
 
 ## Utilisation sur une machine fraîche
 
-Une seule commande, à lancer sur un Ubuntu tout juste installé (sans rien d'autre configuré au préalable) :
+Une seule commande, sans rien installer au préalable (`wget` est disponible
+par défaut sur Ubuntu) :
 
 ```bash
-curl -O https://github.com/Ghislain-KIMA/.dotfiles/blob/main/my_ubuntu.py
+wget -O my_ubuntu.py https://raw.githubusercontent.com/Ghislain-KIMA/.dotfiles/main/my_ubuntu.py
 python3 my_ubuntu.py
 ```
 
-### Personnaliser le dossier d'installation
+`my_ubuntu.py` reste volontairement minimal et autonome (aucun import du
+package `installer` en haut du fichier) : au tout premier lancement,
+`~/.dotfiles/` n'existe pas encore et `git` n'est pas forcément installé.
+Le script :
 
-Par défaut, les logiciels sans paquet APT (VS Code excepté, voir tableau ci-dessous) s'installent dans `~/installed/`. Ce chemin est personnalisable via la variable d'environnement `INSTALL_DIR`, sans avoir à modifier le script :
+1. Installe git et clone ce dépôt dans `~/.dotfiles/` — **seulement si
+   nécessaire** (git absent ou dépôt pas encore cloné). Sur les lancements
+   suivants, cette étape est silencieusement sautée.
+2. Importe ensuite le package `installer/` (qui vient d'être cloné) et
+   exécute toutes les étapes définies dans `STEPS`.
+
+### Étapes disponibles
+
+| Étape | Module | Description |
+|---|---|---|
+| `update` | `core` | `apt update && apt upgrade` |
+| `chrome` | `browsers` | Google Chrome (`.deb` téléchargé directement) |
+| `vscode` | `dev_tools` | VS Code (dépôt APT officiel Microsoft + clé GPG) |
+| `edge` | `browsers` | Microsoft Edge (dépôt APT officiel + clé GPG) |
+| `docker` | `dev_tools` | Docker CE (dépôt officiel + clé GPG) |
+| `virtualbox` | `dev_tools` | VirtualBox + Extension Pack (dépôt Ubuntu standard, licence en mode interactif) |
+| `nodejs` | `dev_tools` | Node.js via NVM (sans sudo, dans `~/.nvm`) |
+| `miniconda` | `dev_tools` | Miniconda (version épinglée + SHA-256 vérifié) |
+| `tools` | `misc` | ripgrep, Inkscape, PostgreSQL (+contrib), rclone (dépôts Ubuntu) |
+| `drawio` | `misc` | Draw.io Desktop (dernière version via API GitHub + SHA-256) |
+| `extensions` | `vscode_extensions` | Extensions VS Code depuis `vscode/extensions.txt` |
+| `claude` | `misc` | Claude Desktop (dépôt officiel Anthropic + empreinte GPG vérifiée) |
+
+### Lancer une seule étape
 
 ```bash
-INSTALL_DIR=~/.local python3 my_ubuntu.py
-# ou n'importe quel autre chemin
-INSTALL_DIR=/opt/mytools python3 my_ubuntu.py
+python3 my_ubuntu.py drawio
+python3 my_ubuntu.py extensions
+# etc.
 ```
 
-Ce script va, dans l'ordre :
+### Relancer le script plusieurs fois
 
-1. Installer les paquets système essentiels via APT (Git, PostgreSQL, VirtualBox, Docker, Claude Desktop, etc.)
-2. Installer VS Code, Android Studio, Flutter, Miniconda, Node.js (via NVM)
-3. Configurer le `PATH` dans `~/.bashrc`
-4. Créer les raccourcis Web Apps Chrome (Gmail, GitHub, YouTube, Claude, etc.)
-5. Cloner ce dépôt dans `~/.dotfiles/` et restaurer les configurations :
-   - Installer [GNU Stow](https://www.gnu.org/software/stow/)
-   - Créer les liens symboliques (`~/.gitconfig`, `~/.nanorc`, `~/.condarc`, `~/.config/Code/User/settings.json`, ...)
-   - Réinstaller toutes les extensions VS Code listées dans `vscode/extensions.txt`
+Sans danger. Chaque étape vérifie d'abord si le logiciel est déjà présent
+avant d'agir. Le bootstrap (git + clone) ne s'exécute lui aussi qu'une
+seule fois, silencieusement ignoré ensuite.
 
-## Logiciels installés et méthode
+### Ajouter un nouveau logiciel
 
-Chaque logiciel est installé via la source officielle la plus fiable disponible, en privilégiant systématiquement APT/`.deb` (paquets signés et vérifiés automatiquement à chaque mise à jour) ; à défaut, une archive officielle avec vérification manuelle du SHA-256.
+1. Écrire la fonction `install_xxx()` dans le module qui correspond le
+   mieux (`browsers.py`, `dev_tools.py`, `misc.py`, ou en créer un nouveau
+   si aucun ne convient).
+2. L'ajouter au dictionnaire `STEPS` dans `installer/steps.py`.
 
-| Logiciel                                                                     | Méthode                                                           | Emplacement                      |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
-| Paquets système (build-essential, git, PostgreSQL, VirtualBox, Inkscape...) | APT (dépôts Ubuntu)                                              | système                         |
-| Google Chrome                                                                | `.deb` officiel                                                  | système                         |
-| Microsoft Edge                                                               | dépôt APT Microsoft + clé GPG                                   | système                         |
-| Docker (CE, CLI, Buildx, Compose)                                            | dépôt APT officiel + clé GPG                                    | système                         |
-| Claude Desktop                                                               | dépôt APT officiel Anthropic +**empreinte GPG vérifiée** | système                         |
-| VS Code                                                                      | dépôt APT Microsoft + clé GPG                                   | système                         |
-| Android Studio                                                               | archive`.tar.gz` officielle + **SHA-256 vérifié**        | `$INSTALL_DIR/android-studio/` |
-| Flutter SDK                                                                  | `git clone` (dépôt officiel)                                   | `$INSTALL_DIR/flutter/`        |
-| Miniconda                                                                    | installeur`.sh` officiel + **SHA-256 vérifié**           | `$INSTALL_DIR/miniconda3/`     |
-| Node.js / NVM                                                                | script d'installation officiel                                     | `$INSTALL_DIR/nvm/`            |
+### Méthode d'installation par logiciel
 
-### Vérification SHA-256 (Android Studio, Miniconda)
+Le dépôt APT officiel + clé GPG est préféré chaque fois qu'il existe :
+contrairement à un `.deb` téléchargé une fois, la signature est revérifiée
+à **chaque** mise à jour future, pas seulement au premier téléchargement.
+À défaut, un SHA-256 vérifié à l'installation (Draw.io, Miniconda).
 
-Ces deux logiciels n'ont pas de dépôt APT officiel : leur intégrité est donc vérifiée manuellement après téléchargement.
+| Logiciel | Méthode | Vérification |
+|---|---|---|
+| Google Chrome | `.deb` direct | Aucune (s'auto-enregistre en dépôt APT après coup) |
+| VS Code, Edge, Docker, Claude Desktop | Dépôt APT officiel | Clé/empreinte GPG |
+| VirtualBox, ripgrep, Inkscape, PostgreSQL, rclone | Dépôts Ubuntu standards | Gérée nativement par apt |
+| Draw.io, Miniconda | Téléchargement direct | SHA-256 vérifié manuellement |
+| Node.js | NVM (script officiel) | Aucune (pas de dépôt tiers, sans sudo) |
 
-- La **version et le SHA-256 attendu sont épinglés en dur** dans `my_ubuntu.py` (pas de "latest" mouvant, pour garder une somme stable et vérifiable).
-- **Si le SHA-256 calculé ne correspond pas** à la valeur attendue :
-  1. Le fichier téléchargé est immédiatement supprimé.
-  2. Le script s'arrête (`RuntimeError`), aucune étape suivante ne s'exécute.
-  3. Le message affiche la somme attendue et la somme obtenue pour diagnostiquer (fichier corrompu, version changée côté serveur, etc.).
-- **Limite à connaître** : ces versions sont épinglées manuellement et deviendront obsolètes avec le temps. Il faut périodiquement revérifier et mettre à jour la version + le SHA-256 dans le script, depuis :
-  - Android Studio : https://developer.android.com/studio
-  - Miniconda : https://repo.anaconda.com/miniconda/
-
-## Fonctionnement de Stow
-
-Chaque sous-dossier à la racine (`git/`, `vscode/`, `nano/`, `conda/`) est un "package" Stow : son arborescence interne reproduit exactement celle attendue dans `$HOME`. La commande `stow <package>`, lancée depuis `~/.dotfiles/`, crée les liens symboliques correspondants — par exemple `~/.gitconfig` devient un lien vers `~/.dotfiles/git/.gitconfig`.
-
-Modifier un fichier de config normalement (via son application, ou un éditeur) modifie donc directement le fichier versionné dans ce dépôt.
-
-## Mettre à jour la liste des extensions VS Code
-
-Après avoir installé une nouvelle extension utile, régénérer la liste avant de commit :
+### Mettre à jour la liste des extensions VS Code
 
 ```bash
 code --list-extensions > ~/.dotfiles/vscode/extensions.txt
@@ -97,12 +102,39 @@ git commit -m "Mise à jour des extensions VS Code"
 git push
 ```
 
-## Sécurité — ce qui n'est volontairement PAS dans ce dépôt
+### rclone
 
-- Clés SSH (`~/.ssh/`) et GPG (`~/.gnupg/`) — à régénérer/restaurer manuellement sur chaque nouvelle machine.
-- Configuration rclone (`rclone.conf`) — contient des accès à des services cloud, à chiffrer avant toute migration future.
-- Historique bash/psql/python, tokens d'authentification divers.
+Le programme `rclone` est installé automatiquement (étape `tools`), mais sa
+**configuration** (remotes, accès cloud) reste volontairement manuelle :
+`rclone config` nécessite une autorisation interactive (navigateur), et le
+fichier `rclone.conf` résultant contient des identifiants sensibles à ne
+jamais committer en clair. Une sauvegarde/restauration chiffrée (via `gpg`)
+pourra être ajoutée plus tard, une fois une vraie configuration existante.
+
+---
+
+## Fichiers legacy (non utilisés actuellement)
+
+Le dépôt contient encore des restes d'une première approche basée sur
+[GNU Stow](https://www.gnu.org/software/stow/) (liens symboliques) :
+
+- `git/`, `nano/`, `conda/` — packages Stow (config Git, nano, conda)
+- `vscode/.config/Code/User/settings.json` — settings VS Code, géré via Stow
+- `restore_dotfiles.py` — script de restauration via Stow
+
+Cette approche a été **abandonnée** : Stow "replie" un dossier entier en un
+seul lien symbolique quand le dossier cible n'existe pas encore côté
+machine (ex: `~/.config/Code/User/` absent sur une install fraîche), ce qui
+a fait atterrir tout le cache/historique VS Code directement dans ce dépôt
+Git par erreur. Ces fichiers restent pour référence, mais ne sont **pas**
+utilisés par `my_ubuntu.py`.
+
+## Sécurité — ce qui n'est volontairement pas dans ce dépôt
+
+- Clés SSH (`~/.ssh/`) et GPG (`~/.gnupg/`)
+- Configuration rclone (`rclone.conf`)
+- Historique bash/psql/python, tokens d'authentification
 
 ## Auteur
 
-Ghislain KIMA — [Ghislain-KIMA](https://github.com/Ghislain-KIMA/Ghislain-KIMA.git)
+Ghislain KIMA ([@Ghislain-KIMA](https://github.com/Ghislain-KIMA)) — setup personnel, pour mon propre workflow de développement.
