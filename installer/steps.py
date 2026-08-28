@@ -10,6 +10,7 @@ from installer.dev_tools import (
 )
 from installer.misc import install_apt_packages, install_drawio, install_claude_desktop
 from installer.vscode_extensions import install_vscode_extensions
+from installer.post_config import apply_post_config
 
 STEPS = {
     "update": system_update,
@@ -24,6 +25,7 @@ STEPS = {
     "drawio": install_drawio,
     "extensions": install_vscode_extensions,
     "claude": install_claude_desktop,
+    "post-config": apply_post_config,
 }
 
 
