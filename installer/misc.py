@@ -22,6 +22,9 @@ APT_PACKAGES = [
         "package": ["postgresql", "postgresql-contrib"],
     },
     {"name": "rclone", "binary": "rclone", "package": "rclone"},
+    {"name": "tree", "binary": "tree", "package": "tree"},
+    {"name": "tealdeer", "binary": "tldr", "package": "tealdeer"},
+    {"name": "fzf", "binary": "fzf", "package": "fzf"},
 ]
 
 
