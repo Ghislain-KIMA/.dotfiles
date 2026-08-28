@@ -10,6 +10,8 @@ import subprocess
 # tourner en permanence ni démarrer automatiquement au boot.
 SERVICES_TO_DISABLE = [
     "postgresql",
+    "docker",
+    "docker.socket",  # sans ça, une commande `docker` relance le service via activation par socket
 ]
 
 
