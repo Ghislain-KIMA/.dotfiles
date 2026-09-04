@@ -8,7 +8,12 @@ from installer.dev_tools import (
     install_nodejs,
     install_miniconda,
 )
-from installer.misc import install_apt_packages, install_drawio, install_claude_desktop
+from installer.misc import (
+    install_apt_packages,
+    install_drawio,
+    install_claude_desktop,
+    install_rclone,
+)
 from installer.vscode_extensions import install_vscode_extensions
 from installer.post_config import apply_post_config
 
@@ -22,6 +27,7 @@ STEPS = {
     "nodejs": install_nodejs,
     "miniconda": install_miniconda,
     "tools": install_apt_packages,
+    "rclone": install_rclone,
     "drawio": install_drawio,
     "extensions": install_vscode_extensions,
     "claude": install_claude_desktop,

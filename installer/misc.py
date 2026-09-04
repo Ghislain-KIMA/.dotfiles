@@ -21,7 +21,6 @@ APT_PACKAGES = [
         "binary": "psql",
         "package": ["postgresql", "postgresql-contrib"],
     },
-    {"name": "rclone", "binary": "rclone", "package": "rclone"},
     {"name": "tree", "binary": "tree", "package": "tree"},
     {"name": "tealdeer", "binary": "tldr", "package": "tealdeer"},
     {"name": "fzf", "binary": "fzf", "package": "fzf"},
@@ -185,4 +184,92 @@ def install_claude_desktop():
         print("\n==> Claude Desktop installé avec succès !")
     except subprocess.CalledProcessError as error:
         print(f"\n[X] Une erreur est survenue lors de l'installation de Claude Desktop : {error}")
+        sys.exit(1)
+
+
+def install_rclone():
+    """Installe rclone : toujours la dernière version stable, SHA-256 vérifié.
+
+    Le paquet "rclone" des dépôts Ubuntu standards traîne souvent très en
+    retard sur les releases officielles -> on télécharge directement depuis
+    downloads.rclone.org (lien "current", toujours à jour), et on vérifie
+    l'intégrité via le fichier SHA256SUMS publié pour la version exacte
+    obtenue (méthode officiellement documentée par rclone.org).
+    """
+    print("\n=== Installation de rclone ===\n")
+
+    if not shutil.which("unzip"):
+        subprocess.run(["sudo", "apt", "install", "-y", "unzip"], check=True)
+
+    try:
+        zip_path = Path("/tmp/rclone-current-linux-amd64.zip")
+        subprocess.run(
+            ["wget", "https://downloads.rclone.org/rclone-current-linux-amd64.zip",
+             "-O", str(zip_path)],
+            check=True,
+        )
+
+        extract_dir = Path("/tmp/rclone_extract")
+        shutil.rmtree(extract_dir, ignore_errors=True)
+        subprocess.run(["unzip", "-q", "-o", str(zip_path), "-d", str(extract_dir)], check=True)
+
+        # Le zip contient un dossier "rclone-vX.Y.Z-linux-amd64/" -> on en
+        # extrait la version exacte pour aller chercher le bon SHA256SUMS.
+        release_dir = next(extract_dir.glob("rclone-v*-linux-amd64"))
+        version = release_dir.name.removeprefix("rclone-").removesuffix("-linux-amd64")
+
+        if shutil.which("rclone"):
+            current = subprocess.run(
+                ["rclone", "version"], capture_output=True, text=True
+            ).stdout.splitlines()[0]
+            if version in current:
+                print(f"===> rclone est déjà à jour ({version}).")
+                zip_path.unlink()
+                shutil.rmtree(extract_dir, ignore_errors=True)
+                return
+            print(f"===> Mise à jour disponible : {current.strip()} -> {version}")
+
+        print("==> Vérification du SHA-256...")
+        sums_url = f"https://downloads.rclone.org/{version}/SHA256SUMS"
+        sums_result = subprocess.run(
+            ["wget", "-qO-", sums_url], capture_output=True, text=True, check=True
+        )
+        expected_line = next(
+            line for line in sums_result.stdout.splitlines()
+            if "rclone-current-linux-amd64.zip" in line or f"rclone-{version}-linux-amd64.zip" in line
+        )
+        expected_sha256 = expected_line.split()[0]
+
+        computed = compute_sha256(zip_path)
+        if computed != expected_sha256:
+            zip_path.unlink()
+            shutil.rmtree(extract_dir, ignore_errors=True)
+            print(
+                f"\n[X] SHA-256 invalide pour rclone !\n"
+                f"Attendu : {expected_sha256}\n"
+                f"Obtenu  : {computed}\n"
+                f"Fichiers supprimés par sécurité."
+            )
+            sys.exit(1)
+        print("===> SHA-256 vérifié avec succès.")
+
+        subprocess.run(
+            ["sudo", "cp", str(release_dir / "rclone"), "/usr/bin/rclone"], check=True
+        )
+        subprocess.run(["sudo", "chown", "root:root", "/usr/bin/rclone"], check=True)
+        subprocess.run(["sudo", "chmod", "755", "/usr/bin/rclone"], check=True)
+
+        manpage = release_dir / "rclone.1"
+        if manpage.exists():
+            subprocess.run(["sudo", "mkdir", "-p", "/usr/local/share/man/man1"], check=True)
+            subprocess.run(
+                ["sudo", "cp", str(manpage), "/usr/local/share/man/man1/rclone.1"], check=True
+            )
+            subprocess.run(["sudo", "mandb"], check=False)
+
+        zip_path.unlink()
+        shutil.rmtree(extract_dir, ignore_errors=True)
+        print(f"\n==> rclone {version} installé avec succès !")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation de rclone : {error}")
         sys.exit(1)
