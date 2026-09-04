@@ -1,19 +1,21 @@
 """Réinstallation des extensions VS Code."""
 import subprocess
-from pathlib import Path
+
+from installer.config import DOTFILES_DIR
 
 
 def install_vscode_extensions():
-    """Réinstalle les extensions VS Code listées dans ~/.dotfiles/vscode/extensions.txt.
+    """Réinstalle les extensions VS Code listées dans DOTFILES_DIR/vscode/extensions.txt.
 
-    On cible toujours ~/.dotfiles/ (chemin fixe) plutôt que le dossier du script
-    lui-même : lors du tout premier lancement (script récupéré via wget, en dehors
-    de .dotfiles), clone_dotfiles() vient de créer ~/.dotfiles/ un peu plus tôt
-    dans l'exécution -> c'est cet emplacement, garanti à jour, qu'il faut lire.
+    On cible DOTFILES_DIR (personnalisable, ~/.dotfiles par défaut) plutôt
+    que le dossier du script lui-même : lors du tout premier lancement
+    (script récupéré via wget, en dehors du dépôt), clone_dotfiles() vient
+    de cloner ce dossier un peu plus tôt dans l'exécution -> c'est cet
+    emplacement, garanti à jour, qu'il faut lire.
     """
     print("\n=== Installation des extensions VS Code ===\n")
 
-    extensions_file = Path.home() / ".dotfiles" / "vscode" / "extensions.txt"
+    extensions_file = DOTFILES_DIR / "vscode" / "extensions.txt"
     if not extensions_file.exists():
         print(f"===> Fichier {extensions_file} introuvable, étape ignorée.")
         return

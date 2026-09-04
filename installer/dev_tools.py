@@ -6,6 +6,15 @@ import sys
 from pathlib import Path
 
 from installer.core import apt_update, upgrade_package_if_needed, compute_sha256
+from installer.config import (
+    NVM_DIR,
+    CONDA_DIR,
+    NVM_VERSION,
+    NODE_VERSION,
+    MINICONDA_FILENAME,
+    MINICONDA_SHA256,
+    MINICONDA_URL,
+)
 
 
 def install_vscode():
@@ -160,11 +169,7 @@ def install_nodejs():
     """
     print("\n=== Installation de Node.js (via NVM) ===\n")
 
-    NVM_VERSION = "v0.40.7"
-    NODE_VERSION = "24"
-    nvm_dir = Path.home() / ".nvm"
-
-    if not (nvm_dir / "nvm.sh").exists():
+    if not (NVM_DIR / "nvm.sh").exists():
         try:
             subprocess.run(
                 f"wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/{NVM_VERSION}/install.sh | bash",
@@ -182,7 +187,7 @@ def install_nodejs():
     # on doit la charger et l'appeler dans le même processus bash.
     try:
         subprocess.run(
-            f'export NVM_DIR="{nvm_dir}"; . "$NVM_DIR/nvm.sh"; '
+            f'export NVM_DIR="{NVM_DIR}"; . "$NVM_DIR/nvm.sh"; '
             f"nvm install {NODE_VERSION} && node -v && npm -v",
             shell=True,
             check=True,
@@ -197,17 +202,13 @@ def install_miniconda():
     """Installe Miniconda : version épinglée + SHA-256 vérifié (pas de dépôt APT officiel).
 
     Version et somme à mettre à jour manuellement depuis https://repo.anaconda.com/miniconda/
+    (dans installer/config.py).
     """
     print("\n=== Installation de Miniconda ===\n")
 
     if shutil.which("conda"):
         print("===> Miniconda est déjà installé (mise à jour manuelle : `conda update conda`).")
         return
-
-    MINICONDA_FILENAME = "Miniconda3-py314_26.5.3-2-Linux-x86_64.sh"
-    MINICONDA_SHA256 = "80bc27f13c4de90f10e387aa45e864de4f0860692c1221aef5900009a2b55302"
-    MINICONDA_URL = f"https://repo.anaconda.com/miniconda/{MINICONDA_FILENAME}"
-    conda_dir = Path.home() / "miniconda3"
 
     try:
         installer_path = Path("/tmp") / MINICONDA_FILENAME
@@ -227,10 +228,10 @@ def install_miniconda():
         print("===> SHA-256 vérifié avec succès.")
 
         subprocess.run(
-            ["bash", str(installer_path), "-b", "-u", "-p", str(conda_dir)], check=True
+            ["bash", str(installer_path), "-b", "-u", "-p", str(CONDA_DIR)], check=True
         )
         installer_path.unlink()
-        subprocess.run([str(conda_dir / "bin" / "conda"), "init", "bash"], check=True)
+        subprocess.run([str(CONDA_DIR / "bin" / "conda"), "init", "bash"], check=True)
         print("\n==> Miniconda installé avec succès ! (redémarre ton terminal)")
     except subprocess.CalledProcessError as error:
         print(f"\n[X] Une erreur est survenue lors de l'installation de Miniconda : {error}")

@@ -7,10 +7,24 @@ wget, à un moment où ~/.dotfiles/ n'existe pas encore et où `git` n'est
 pas forcément installé. Une fois le dépôt cloné, il délègue tout le reste
 au package `installer/`.
 """
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# Dupliqué volontairement depuis installer/config.py (GITHUB_USERNAME,
+# DOTFILES_REPO_URL) : ce fichier doit fonctionner AVANT que le dépôt
+# (et donc installer/config.py) n'existe sur la machine.
+DOTFILES_REPO_URL = "https://github.com/Ghislain-KIMA/.dotfiles.git"
+
+
+def get_dotfiles_dir():
+    """Chemin du dépôt .dotfiles, personnalisable via la variable DOTFILES_DIR.
+
+    Par défaut : ~/.dotfiles (comportement inchangé si rien n'est précisé).
+    """
+    return Path(os.environ.get("DOTFILES_DIR", str(Path.home() / ".dotfiles"))).expanduser()
 
 
 def install_git():
@@ -31,21 +45,22 @@ def install_git():
 
 
 def clone_dotfiles():
-    """Clone le dépôt .dotfiles dans ~/.dotfiles s'il n'existe pas déjà."""
+    """Clone le dépôt .dotfiles dans DOTFILES_DIR s'il n'existe pas déjà."""
     print("\n=== Clonage du dépôt .dotfiles ===\n")
 
-    dotfiles_dir = Path.home() / ".dotfiles"
+    dotfiles_dir = get_dotfiles_dir()
     if dotfiles_dir.exists():
         print(f"===> {dotfiles_dir} existe déjà, clonage ignoré.")
         return
 
+    # git clone ne crée pas les dossiers parents manquants (contrairement à
+    # mkdir -p) -> nécessaire si DOTFILES_DIR pointe vers un chemin imbriqué
+    # qui n'existe pas encore (ex: ~/datas/backup/remote/projects/.dotfiles).
+    dotfiles_dir.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         subprocess.run(
-            [
-                "git", "clone",
-                "https://github.com/Ghislain-KIMA/.dotfiles.git",
-                str(dotfiles_dir),
-            ],
+            ["git", "clone", DOTFILES_REPO_URL, str(dotfiles_dir)],
             check=True,
         )
         print(f"\n==> Dépôt cloné avec succès dans {dotfiles_dir} !")
@@ -55,7 +70,7 @@ def clone_dotfiles():
 
 
 def main():
-    dotfiles_dir = Path.home() / ".dotfiles"
+    dotfiles_dir = get_dotfiles_dir()
 
     # Bootstrap uniquement si nécessaire : première exécution sur une
     # machine fraîche (git absent OU dépôt pas encore cloné). Une fois
