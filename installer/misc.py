@@ -273,3 +273,36 @@ def install_rclone():
     except subprocess.CalledProcessError as error:
         print(f"\n[X] Une erreur est survenue lors de l'installation de rclone : {error}")
         sys.exit(1)
+
+
+def install_obs():
+    """Installe OBS Studio via le PPA officiel (ppa:obsproject/obs-studio).
+
+    C'est la méthode officiellement recommandée par obsproject.com/download
+    pour Ubuntu 24.04+ (avec Flathub comme seule autre option officielle).
+    Donne toujours la dernière version stable, mise à jour automatiquement
+    par la suite via system_update() (paquet apt normal une fois le PPA ajouté).
+    """
+    print("\n=== Installation d'OBS Studio ===\n")
+
+    if shutil.which("obs"):
+        upgrade_package_if_needed("obs-studio")
+        return
+
+    try:
+        if not shutil.which("add-apt-repository"):
+            subprocess.run(["sudo", "apt", "install", "-y", "software-properties-common"], check=True)
+
+        subprocess.run(
+            ["sudo", "add-apt-repository", "--yes", "--no-update", "multiverse"], check=True
+        )
+        subprocess.run(
+            ["sudo", "add-apt-repository", "--yes", "ppa:obsproject/obs-studio"], check=True
+        )
+
+        apt_update()
+        subprocess.run(["sudo", "apt", "install", "-y", "obs-studio"], check=True)
+        print("\n==> OBS Studio installé avec succès !")
+    except subprocess.CalledProcessError as error:
+        print(f"\n[X] Une erreur est survenue lors de l'installation d'OBS Studio : {error}")
+        sys.exit(1)

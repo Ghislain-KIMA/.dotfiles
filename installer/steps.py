@@ -13,6 +13,7 @@ from installer.misc import (
     install_drawio,
     install_claude_desktop,
     install_rclone,
+    install_obs,
 )
 from installer.vscode_extensions import install_vscode_extensions
 from installer.post_config import apply_post_config
@@ -28,6 +29,7 @@ STEPS = {
     "miniconda": install_miniconda,
     "tools": install_apt_packages,
     "rclone": install_rclone,
+    "obs": install_obs,
     "drawio": install_drawio,
     "extensions": install_vscode_extensions,
     "claude": install_claude_desktop,
